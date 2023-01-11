@@ -1,7 +1,7 @@
 {{/* Takes the Entry structure defined in gemini.go */}}
 # {{ .Title }}
 
-{{ .Date }} · {{ .Author }} · {{ .ReadingTime }} min.
+{{ .Date.Format "Jan. 02 2006" }} · {{ .Author }} · {{ .ReadingTime }} min.
 
 => {{ .URL }}
 

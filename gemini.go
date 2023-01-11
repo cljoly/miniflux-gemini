@@ -20,10 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	_ "embed"
+	"fmt"
 	"io"
 	"text/template"
-	_ "embed"
 
+	"github.com/LukeEmmet/html2gemini"
 	"miniflux.app/client"
 )
 
@@ -48,14 +50,19 @@ type Entry struct {
 	GeminiContent string
 }
 
-func NewEntry(minifluxEntry *client.Entry) *Entry {
+func NewEntry(minifluxEntry *client.Entry) (*Entry, error) {
 	if minifluxEntry == nil {
-		return nil
+		return nil, fmt.Errorf("error trying to render nil miniflux entry")
 	}
+	gemini, err := htmlToGemini(minifluxEntry.Content)
+	if err != nil {
+		return nil, fmt.Errorf("error converting gemini to HTML for entry %d: %w", minifluxEntry.ID, err)
+	}
+
 	return &Entry{
 		Entry:         minifluxEntry,
-		GeminiContent: "TODO",
-	}
+		GeminiContent: gemini,
+	}, nil
 }
 
 // Render renders the entry with the gemini template
@@ -63,3 +70,10 @@ func (entry *Entry) Render(w io.Writer) error {
 	return entryTmpl.Execute(w, entry)
 }
 
+func htmlToGemini(html string) (gemini string, err error) {
+	opts := html2gemini.NewOptions()
+	// TODO Customize options
+	ctx := html2gemini.NewTraverseContext(*opts)
+
+	return html2gemini.FromString(html, *ctx)
+}

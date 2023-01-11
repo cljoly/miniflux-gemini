@@ -54,7 +54,10 @@ func Run() error {
 		ErrorPage("No entry returned")
 	}
 
-	entry := NewEntry(entries.Entries[0])
+	entry, err := NewEntry(entries.Entries[0])
+	if err != nil {
+		return fmt.Errorf("error templating entry: %w", entry)
+	}
 	entry.Render(os.Stdout)
 
 	return nil
