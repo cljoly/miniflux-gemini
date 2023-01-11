@@ -3,6 +3,7 @@ module cj.rs/miniflux-gemini
 go 1.19
 
 require (
+	git.sr.ht/~adnano/go-gemini v0.2.3
 	github.com/LukeEmmet/html2gemini v0.0.0-20220723214925-18379cca1a0d
 	miniflux.app v0.0.0-20230105152359-2956bbad8d2b
 	modernc.org/sqlite v1.20.2
@@ -12,7 +13,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/makeworld-the-better-one/go-gemini v0.8.5 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/olekukonko/tablewriter v0.0.4 // indirect
