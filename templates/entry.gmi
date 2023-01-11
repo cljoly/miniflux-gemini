@@ -1,0 +1,10 @@
+{{/* Takes the Entry structure defined in gemini.go */}}
+# {{ .Title }}
+
+{{ .Date }} · {{ .Author }} · {{ .ReadingTime }} min.
+
+=> {{ .URL }}
+
+{{ .GeminiContent }}
+
+────────────────────────────────────────────────────────────────────────────────
