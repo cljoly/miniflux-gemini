@@ -21,11 +21,25 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
 
+	gemini "github.com/makeworld-the-better-one/go-gemini"
 	"miniflux.app/client"
 )
+
+type Handler struct{}
+
+func (h Handler) Handle(r gemini.Request) *gemini.Response {
+	body := io.NopCloser(strings.NewReader("Testing server"))
+	return &gemini.Response{
+		Status: 20,
+		Meta: "text/gemini",
+		Body: body,
+	}
+}
 
 func Run() error {
 	db, err := NewDB("miniflux-gemini.db")
@@ -40,6 +54,13 @@ func Run() error {
 	}
 	// TODO Use a pool of clients, with one for each instance?
 	miniflux := client.New(instance, token)
+
+	handler := Handler{}
+	// TODO Make this configurable
+	err = gemini.ListenAndServe("127.0.0.8:1965", "./test.cert", "./test.key", handler)
+	if err != nil {
+		return fmt.Errorf("error starting gemini server: %w", err)
+	}
 
 	entries, err := miniflux.Entries(&client.Filter{
 		Status:    "unread",
@@ -58,7 +79,7 @@ func Run() error {
 
 	entry, err := NewEntry(entries.Entries[0])
 	if err != nil {
-		return fmt.Errorf("error templating entry: %w", entry)
+		return fmt.Errorf("error templating entry: %w", err)
 	}
 	entry.Render(os.Stdout)
 
