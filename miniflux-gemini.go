@@ -46,6 +46,8 @@ func Run() error {
 		Order:     "published_at",
 		Limit:     1,
 		Direction: "desc",
+		// TODO Make this configurable
+		CategoryID: 7,
 	})
 	if err != nil {
 		return fmt.Errorf("error getting miniflux entries: %w", err)
