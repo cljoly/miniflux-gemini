@@ -51,16 +51,23 @@ func NewDB(f string) (*SqliteDB, error) {
 	return &SqliteDB{db: db}, nil
 }
 
+type User struct {
+	certFingerprint, instance, token string
+}
+
+var ErrUserNotFound = fmt.Errorf("User not found in DB")
+
 // TODO Return a full User struct and don’t panic
-func (s *SqliteDB) GetUser(cert string) (instance, token string, err error) {
-	row := s.db.QueryRow("SELECT instance, token FROM Users WHERE cert=?1", cert)
-	err = row.Scan(&instance, &token)
+func (s *SqliteDB) GetUser(certFingerprint string) (user User, err error) {
+	user.certFingerprint = certFingerprint
+	row := s.db.QueryRow("SELECT instance, token FROM Users WHERE certFingerprint=?1", certFingerprint)
+	err = row.Scan(&user.instance, &user.token)
 	if err == sql.ErrNoRows {
-		return instance, token, fmt.Errorf("Certificate not found")
+		return user, ErrUserNotFound
 	}
 	if err != nil {
-		return instance, token, fmt.Errorf("error reading user with cert %q: %w", cert, err)
+		return user, fmt.Errorf("error reading user with cert %q: %w", certFingerprint, err)
 	}
-	return instance, token, nil
+	return user, nil
 }
 

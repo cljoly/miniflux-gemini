@@ -21,13 +21,8 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/x509"
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"strings"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -35,45 +30,11 @@ import (
 	"miniflux.app/client"
 )
 
-type Handler struct{}
-
-func (h Handler) Handle(r gemini.Request) *gemini.Response {
-	body := io.NopCloser(strings.NewReader("Testing server"))
-	return &gemini.Response{
-		Status: 20,
-		Meta:   "text/gemini",
-		Body:   body,
-	}
-}
-
-func fingerprint(cert *x509.Certificate) [32]byte {
-	b := sha256.Sum256(cert.Raw)
-	return b
-}
-
-func tmpHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
-	tls := r.TLS()
-	if len(tls.PeerCertificates) == 0 {
-		w.WriteHeader(gemini.StatusCertificateRequired, "Certificate required, ask your admin to add yours")
-		return
-	}
-	fingerprint := fingerprint(tls.PeerCertificates[0])
-	fmt.Printf("%+v", fingerprint)
-}
-
 func Run() error {
 	db, err := NewDB("miniflux-gemini.db")
 	if err != nil {
 		return fmt.Errorf("NewDB: %w", err)
 	}
-
-	// TODO Actually get the certificate
-	instance, token, err := db.GetUser("1")
-	if err != nil {
-		return err
-	}
-	// TODO Use a pool of clients, with one for each instance?
-	miniflux := client.New(instance, token)
 
 	certificates := &certificate.Store{}
 	certificates.Register("gm.cj.rs")
@@ -82,11 +43,21 @@ func Run() error {
 	}
 
 	mux := &gemini.Mux{}
-	mux.HandleFunc("/", tmpHandler)
+	mux.HandleFunc("/", todoHandler)
+	mux.HandleFunc("/entry", entryHandler)
+
+	minifluxMiddleware, err := NewMinifluxMiddleware(mux)
+	if err != nil {
+		return err
+	}
+	userMiddleware, err := NewUserMiddleware(db, minifluxMiddleware)
+	if err != nil {
+		return err
+	}
 
 	server := &gemini.Server{
 		Addr:           "gm.cj.rs:1965",
-		Handler:        mux,
+		Handler:        userMiddleware,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		GetCertificate: certificates.Get,
@@ -94,6 +65,16 @@ func Run() error {
 
 	if err := server.ListenAndServe(context.Background()); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	miniflux, ok := MinifluxFromContext(ctx)
+	if !ok {
+		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
+		log.Printf("couldn’t get miniflux")
 	}
 
 	entries, err := miniflux.Entries(&client.Filter{
@@ -105,24 +86,26 @@ func Run() error {
 		CategoryID: 7,
 	})
 	if err != nil {
-		return fmt.Errorf("error getting miniflux entries: %w", err)
+		w.WriteHeader(gemini.StatusTemporaryFailure, "Error querying minflux")
+		log.Printf("error getting miniflux entries: %w", err)
+		return
 	}
 	if entries.Total < 1 {
-		ErrorPage("No entry returned")
+		w.WriteHeader(gemini.StatusTemporaryFailure, "No entry returned")
+		return
 	}
 
 	entry, err := NewEntry(entries.Entries[0])
 	if err != nil {
-		return fmt.Errorf("error templating entry: %w", err)
+		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
+		log.Printf("error templating entry: %v", err)
+		return
 	}
-	entry.Render(os.Stdout)
-
-	return nil
+	entry.Render(w)
 }
 
-// TODO For now, just print
-func ErrorPage(msg string) {
-	println(msg)
+func todoHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	w.WriteHeader(gemini.StatusTemporaryFailure, "Not implemented")
 }
 
 func main() {

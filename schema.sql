@@ -17,7 +17,7 @@
 
 CREATE TABLE IF NOT EXISTS Users (
 	-- Public TLS certificate, to authenticate a user
-	cert TEXT NOT NULL,
+	certFingerprint TEXT NOT NULL,
 	-- Miniflux instance url
 	instance TEXT NOT NULL,
 	-- Miniflux API token
