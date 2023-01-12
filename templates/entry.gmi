@@ -5,13 +5,13 @@
 {{- with .Author }} · {{ . }} {{- end }}
 
 {{ if eq .Status "unread" -}}
-=> ./todo ✓ Mark read
+=> /mark_as_read?id={{ .ID }} ✓ Mark read
 {{ else -}}
 => ./todo ⨯ Mark unread
 {{ end -}}
 
 => ./todo « Prev {{/* Matches the « key and 2 on the bepo layout */}}
-=> ./todo » Next
+=> /entry?nextOf={{ .ID }} » Next
 => /feed/{{ .Feed.ID }} 🔖 {{ .Feed.Title }}
 => /category/{{ .Feed.Category.ID }} 📁 {{ .Feed.Category.Title }}
 => {{ .URL }} Original page

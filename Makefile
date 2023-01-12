@@ -1,4 +1,4 @@
-miniflux-gemini: *.go
+miniflux-gemini: *.go templates/*
 	GOPRIVATE=git.sr.ht go build
 
 all: miniflux-gemini

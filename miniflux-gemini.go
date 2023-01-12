@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -45,6 +46,7 @@ func Run() error {
 	mux := &gemini.Mux{}
 	mux.HandleFunc("/", todoHandler)
 	mux.HandleFunc("/entry", entryHandler)
+	mux.HandleFunc("/mark_as_read", markAsReadHandler)
 
 	minifluxMiddleware, err := NewMinifluxMiddleware(mux)
 	if err != nil {
@@ -70,24 +72,80 @@ func Run() error {
 	return nil
 }
 
-func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *client.Client {
 	miniflux, ok := MinifluxFromContext(ctx)
 	if !ok {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
 		log.Printf("couldn’t get miniflux")
+		return nil
+	}
+	return miniflux
+}
+
+func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	query := r.URL.Query()
+	idString := query.Get("id")
+	if idString == "" {
+		w.WriteHeader(gemini.StatusBadRequest, "missing id")
+		return
+	}
+	id, err := strconv.ParseInt(idString, 10, 64)
+	if err != nil {
+		w.WriteHeader(gemini.StatusBadRequest, "invalid id")
+		return
 	}
 
-	entries, err := miniflux.Entries(&client.Filter{
+	miniflux := getMiniflux(ctx, w)
+	if miniflux == nil {
+		return
+	}
+
+	err = miniflux.UpdateEntries([]int64{id}, "read")
+	if err != nil {
+		w.WriteHeader(gemini.StatusCGIError, "miniflux error")
+		log.Printf("miniflux error: %v", err)
+		return
+	}
+	// Redirect to next entry
+	w.WriteHeader(gemini.StatusRedirect, fmt.Sprintf("/entry?nextOf=%d", id))
+}
+
+func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	filter := client.Filter{
 		Status:    "unread",
 		Order:     "published_at",
 		Limit:     1,
 		Direction: "desc",
 		// TODO Make this configurable
 		CategoryID: 7,
-	})
+	}
+
+	query := r.URL.Query()
+	idString := query.Get("nextOf")
+	if idString != "" {
+		id, err := strconv.ParseInt(idString, 10, 64)
+		if err != nil {
+			w.WriteHeader(gemini.StatusBadRequest, "invalid id")
+			return
+		}
+		filter.AfterEntryID = id
+	}
+
+	handleEntry(ctx, w, &filter)
+}
+
+// Generic function to render various entries, once a filter to find the entry has been figured out.
+// TODO Handle multiple entries?
+func handleEntry(ctx context.Context, w gemini.ResponseWriter, filter *client.Filter) {
+	miniflux := getMiniflux(ctx, w)
+	if miniflux == nil {
+		return
+	}
+
+	entries, err := miniflux.Entries(filter)
 	if err != nil {
 		w.WriteHeader(gemini.StatusTemporaryFailure, "Error querying minflux")
-		log.Printf("error getting miniflux entries: %w", err)
+		log.Printf("error getting miniflux entries: %v", err)
 		return
 	}
 	if entries.Total < 1 {
