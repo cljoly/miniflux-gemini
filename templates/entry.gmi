@@ -1,4 +1,4 @@
-{{/* Takes the Entry structure defined in gemini.go */}}
+{{/* Takes the EntryTmpl structure defined in gemini.go */}}
 # {{ .Title }}
 {{ if .Starred }}⭐ {{ end -}}
 {{ .Date.Format "Jan. 02 2006" }} · {{ .ReadingTime }} min.
@@ -10,14 +10,19 @@
 => ./todo ⨯ Mark unread
 {{ end -}}
 
-=> ./todo « Prev {{/* Matches the « key and 2 on the bepo layout */}}
-=> /entry?nextOf={{ .ID }} » Next
-=> /feed/{{ .Feed.ID }} 🔖 {{ .Feed.Title }}
+{{- with .Prev }}
+{{- /* Matches the « key and 2 on the bepo layout */ -}}
+=> /entry?{{ . }} « Prev
+{{- else -}}
+=> / No Prev, go back home
+{{- end }}
+=> /entry?{{ .Next }} » Next
 => /category/{{ .Feed.Category.ID }} 📁 {{ .Feed.Category.Title }}
+=> /feed/{{ .Feed.ID }} 🔖 {{ .Feed.Title }}
 => {{ .URL }} Original page
-{{ with .CommentsURL }}
+{{- with .CommentsURL }}
 => {{ . }} Comments
-{{ end }}
+{{- end }}
 
 {{ .GeminiContent }}
 

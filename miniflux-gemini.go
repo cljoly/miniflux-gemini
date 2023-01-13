@@ -73,12 +73,13 @@ func Run() error {
 }
 
 func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *client.Client {
-	miniflux, ok := MinifluxFromContext(ctx)
+	user, ok := UserFromContext(ctx)
 	if !ok {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
 		log.Printf("couldn’t get miniflux")
 		return nil
 	}
+	miniflux := client.New(user.instance, user.token)
 	return miniflux
 }
 
@@ -95,6 +96,7 @@ func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.R
 		return
 	}
 
+	// Maybe passing miniflux through the context makes the request silently fail somehow
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
 		return
@@ -111,55 +113,35 @@ func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.R
 }
 
 func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
-	filter := client.Filter{
-		Status:    "unread",
-		Order:     "published_at",
-		Limit:     1,
-		Direction: "desc",
-		// TODO Make this configurable
-		CategoryID: 7,
-	}
-
-	query := r.URL.Query()
-	idString := query.Get("nextOf")
-	if idString != "" {
-		id, err := strconv.ParseInt(idString, 10, 64)
-		if err != nil {
-			w.WriteHeader(gemini.StatusBadRequest, "invalid id")
-			return
-		}
-		filter.AfterEntryID = id
-	}
-
-	handleEntry(ctx, w, &filter)
-}
-
-// Generic function to render various entries, once a filter to find the entry has been figured out.
-// TODO Handle multiple entries?
-func handleEntry(ctx context.Context, w gemini.ResponseWriter, filter *client.Filter) {
+	articleList := NewArticleList()
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
+		w.WriteHeader(gemini.StatusTemporaryFailure, "miniflux error")
+		log.Println("couldn't create miniflux client")
 		return
 	}
 
-	entries, err := miniflux.Entries(filter)
+	query := r.URL.Query()
+	articleList.Extend(query)
+
+	entry, err := articleList.First(miniflux)
 	if err != nil {
 		w.WriteHeader(gemini.StatusTemporaryFailure, "Error querying minflux")
 		log.Printf("error getting miniflux entries: %v", err)
 		return
 	}
-	if entries.Total < 1 {
+	if entry == nil {
 		w.WriteHeader(gemini.StatusTemporaryFailure, "No entry returned")
 		return
 	}
 
-	entry, err := NewEntry(entries.Entries[0])
+	tmplEntry, err := NewTemplatableEntry(entry, &query)
 	if err != nil {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
 		log.Printf("error templating entry: %v", err)
 		return
 	}
-	entry.Render(w)
+	tmplEntry.Render(w)
 }
 
 func todoHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {

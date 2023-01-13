@@ -23,10 +23,12 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"net/url"
+	"strconv"
 	"text/template"
 
 	"github.com/LukeEmmet/html2gemini"
-	"miniflux.app/client"
+	miniflux "miniflux.app/client"
 )
 
 // Gemini templates
@@ -45,29 +47,83 @@ var (
 	entryTmpl = geminiTemplate("entry", entryTxt)
 )
 
-type Entry struct {
-	*client.Entry
+type TemplatableEntry struct {
+	*miniflux.Entry
 	GeminiContent string
+	query         *url.Values
 }
 
-func NewEntry(minifluxEntry *client.Entry) (*Entry, error) {
-	if minifluxEntry == nil {
-		return nil, fmt.Errorf("error trying to render nil miniflux entry")
+func NewTemplatableEntry(minifluxEntry *miniflux.Entry, query *url.Values) (*TemplatableEntry, error) {
+	if minifluxEntry == nil || query == nil {
+		return nil, fmt.Errorf("error trying to render nil entry")
 	}
 	gemini, err := htmlToGemini(minifluxEntry.Content)
 	if err != nil {
 		return nil, fmt.Errorf("error converting gemini to HTML for entry %d: %w", minifluxEntry.ID, err)
 	}
 
-	return &Entry{
+	return &TemplatableEntry{
 		Entry:         minifluxEntry,
 		GeminiContent: gemini,
+		query:         query,
 	}, nil
 }
 
 // Render renders the entry with the gemini template
-func (entry *Entry) Render(w io.Writer) error {
+func (entry *TemplatableEntry) Render(w io.Writer) error {
 	return entryTmpl.Execute(w, entry)
+}
+
+// Utility function to copy the params of the current entry
+func (entry *TemplatableEntry) copyQuery() url.Values {
+	nextMap := make(map[string][]string)
+	for k, v := range map[string][]string(*entry.query) {
+		nextMap[k] = v
+	}
+
+	return url.Values(nextMap)
+}
+
+func maxInt(a, b int) int {
+	if a >= b {
+		return a
+	} else {
+		return b
+	}
+}
+
+// Utility function to get the current offset
+func (entry *TemplatableEntry) currentOffset() int {
+	offset := 0
+	offsetParsed, err := strconv.Atoi(entry.query.Get("offset"))
+	if err == nil {
+		offset = offsetParsed
+	}
+
+	return maxInt(offset, 0)
+}
+
+// Next returns the parameters to get the next entry in the reading list
+func (entry *TemplatableEntry) Next() string {
+	query := entry.copyQuery()
+	query.Del("offset") // There may already be an offset stored, we want to replace it
+	query.Set("offset", fmt.Sprint(entry.currentOffset()+1))
+	return query.Encode()
+}
+
+// Prev returns the parameters to get the previous entry in the reading list
+func (entry *TemplatableEntry) Prev() *string {
+	offset := entry.currentOffset()
+	if offset == 0 {
+		return nil
+	}
+
+	query := entry.copyQuery()
+	query.Del("offset") // There may already be an offset stored, we want to replace it
+	query.Set("offset", fmt.Sprint(offset-1))
+
+	s := query.Encode()
+	return &s
 }
 
 func htmlToGemini(html string) (gemini string, err error) {
@@ -77,3 +133,4 @@ func htmlToGemini(html string) (gemini string, err error) {
 
 	return html2gemini.FromString(html, *ctx)
 }
+

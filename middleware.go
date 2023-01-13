@@ -115,3 +115,4 @@ func MinifluxFromContext(ctx context.Context) (*client.Client, bool) {
 	c, ok := ctx.Value(minifluxKey).(*client.Client)
 	return c, ok
 }
+
