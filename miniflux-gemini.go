@@ -49,11 +49,7 @@ func Run() error {
 	mux.HandleFunc("/entry", entryHandler)
 	mux.HandleFunc("/mark_as_read", markAsReadHandler)
 
-	minifluxMiddleware, err := NewMinifluxMiddleware(mux)
-	if err != nil {
-		return err
-	}
-	userMiddleware, err := NewUserMiddleware(db, minifluxMiddleware)
+	userMiddleware, err := NewUserMiddleware(db, mux)
 	if err != nil {
 		return err
 	}
@@ -77,7 +73,7 @@ func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *client.Client {
 	user, ok := UserFromContext(ctx)
 	if !ok {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
-		log.Printf("couldn’t get miniflux")
+		log.Printf("couldn’t get user")
 		return nil
 	}
 	miniflux := client.New(user.instance, user.token)
@@ -97,7 +93,6 @@ func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.R
 		return
 	}
 
-	// Maybe passing miniflux through the context makes the request silently fail somehow
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
 		return

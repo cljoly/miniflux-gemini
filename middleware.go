@@ -27,7 +27,6 @@ import (
 	"log"
 
 	"git.sr.ht/~adnano/go-gemini"
-	"miniflux.app/client"
 )
 
 func fingerprint(cert *x509.Certificate) string {
@@ -37,8 +36,7 @@ func fingerprint(cert *x509.Certificate) string {
 }
 
 // To find various values in context
-const userKey = "User"
-const minifluxKey = "MinifluxClient"
+const userKey = iota
 
 // UserMiddleware adds the user to context, found by its TLS certificate
 type UserMiddleware struct {
@@ -86,33 +84,3 @@ func UserFromContext(ctx context.Context) (*User, bool) {
 	user, ok := ctx.Value(userKey).(*User)
 	return user, ok
 }
-
-// MinifluxMiddleware depends on UserMiddleware being called first
-type MinifluxMiddleware struct {
-	h gemini.Handler
-	// TODO Store a map of clients per instance? (need to be thread safe)
-}
-
-func NewMinifluxMiddleware(h gemini.Handler) (*MinifluxMiddleware, error) {
-	return &MinifluxMiddleware{h}, nil
-}
-
-func (mm *MinifluxMiddleware) ServeGemini(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
-	user, ok := UserFromContext(ctx)
-	if !ok {
-		w.WriteHeader(gemini.StatusPermanentFailure, "Internal Error")
-		log.Printf("Miniflux middleware error: couldn’t find user. Was UserMiddleware called first?", user)
-		return
-	}
-
-	miniflux := client.New(user.instance, user.token)
-
-	ctx = context.WithValue(ctx, minifluxKey, miniflux)
-	mm.h.ServeGemini(ctx, w, r)
-}
-
-func MinifluxFromContext(ctx context.Context) (*client.Client, bool) {
-	c, ok := ctx.Value(minifluxKey).(*client.Client)
-	return c, ok
-}
-
