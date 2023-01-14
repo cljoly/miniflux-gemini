@@ -17,29 +17,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package main
+package gemtext
 
 import (
 	_ "embed"
 	"fmt"
 	"io"
 	"net/url"
-	"strconv"
-	"text/template"
 
 	"github.com/LukeEmmet/html2gemini"
 	miniflux "miniflux.app/client"
 )
-
-// Gemini templates
-
-func geminiTemplate(name, text string) *template.Template {
-	tmpl, err := template.New(name).Parse(text)
-	if err != nil {
-		panic(err)
-	}
-	return tmpl
-}
 
 var (
 	//go:embed templates/entry.gmi
@@ -74,51 +62,22 @@ func (entry *TemplatableEntry) Render(w io.Writer) error {
 	return entryTmpl.Execute(w, entry)
 }
 
-// Utility function to copy the params of the current entry
-func (entry *TemplatableEntry) copyQuery() url.Values {
-	nextMap := make(map[string][]string)
-	for k, v := range map[string][]string(*entry.query) {
-		nextMap[k] = v
-	}
-
-	return url.Values(nextMap)
-}
-
-func maxInt(a, b int) int {
-	if a >= b {
-		return a
-	} else {
-		return b
-	}
-}
-
-// Utility function to get the current offset
-func (entry *TemplatableEntry) currentOffset() int {
-	offset := 0
-	offsetParsed, err := strconv.Atoi(entry.query.Get("offset"))
-	if err == nil {
-		offset = offsetParsed
-	}
-
-	return maxInt(offset, 0)
-}
-
 // Next returns the parameters to get the next entry in the reading list
 func (entry *TemplatableEntry) Next() string {
-	query := entry.copyQuery()
+	query := copyQuery(entry.query)
 	query.Del("offset") // There may already be an offset stored, we want to replace it
-	query.Set("offset", fmt.Sprint(entry.currentOffset()+1))
+	query.Set("offset", fmt.Sprint(currentOffset(entry.query)+1))
 	return query.Encode()
 }
 
 // Prev returns the parameters to get the previous entry in the reading list
 func (entry *TemplatableEntry) Prev() *string {
-	offset := entry.currentOffset()
+	offset := currentOffset(entry.query)
 	if offset == 0 {
 		return nil
 	}
 
-	query := entry.copyQuery()
+	query := copyQuery(entry.query)
 	query.Del("offset") // There may already be an offset stored, we want to replace it
 	query.Set("offset", fmt.Sprint(offset-1))
 

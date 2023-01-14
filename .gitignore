@@ -1,3 +1,5 @@
+# Production files, useful to igonre while testing locally
 *.db
+certs
 
 miniflux-gemini

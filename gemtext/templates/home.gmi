@@ -1,0 +1,17 @@
+{{/* Takes the EntryTmpl structure defined in gemini.go */}}
+# Miniflux -> Gemini
+
+=> /entry?starred=true Starred
+=> /entry All Unread
+{{- with .Params }}
+
+=> /entry?{{ . }} Entries with the current filter
+{{- end }}
+
+## Categories
+
+{{ range .Categories -}}
+=> /entry?categoryID={{ .ID }} {{ .Title }}
+{{ else }}
+None
+{{ end }}

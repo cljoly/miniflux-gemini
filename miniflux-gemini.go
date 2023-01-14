@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"time"
 
+	"cj.rs/miniflux-gemini/gemtext"
 	"git.sr.ht/~adnano/go-gemini"
 	"git.sr.ht/~adnano/go-gemini/certificate"
 	"miniflux.app/client"
@@ -44,7 +45,7 @@ func Run() error {
 	}
 
 	mux := &gemini.Mux{}
-	mux.HandleFunc("/", todoHandler)
+	mux.HandleFunc("/", homeHandler)
 	mux.HandleFunc("/entry", entryHandler)
 	mux.HandleFunc("/mark_as_read", markAsReadHandler)
 
@@ -112,6 +113,26 @@ func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.R
 	w.WriteHeader(gemini.StatusRedirect, fmt.Sprintf("/entry?nextOf=%d", id))
 }
 
+func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	miniflux := getMiniflux(ctx, w)
+	if miniflux == nil {
+		w.WriteHeader(gemini.StatusTemporaryFailure, "miniflux error")
+		log.Println("couldn't create miniflux client")
+		return
+	}
+	query := r.URL.Query()
+
+	categories, err := miniflux.Categories()
+	if err != nil {
+		w.WriteHeader(gemini.StatusTemporaryFailure, "Error querying minflux")
+		log.Printf("error getting miniflux categories: %v", err)
+		return
+	}
+
+	gemtextHome, err := gemtext.NewHome(&categories, &query)
+	gemtextHome.Render(w)
+}
+
 func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	articleList := NewArticleList()
 	miniflux := getMiniflux(ctx, w)
@@ -135,13 +156,13 @@ func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reques
 		return
 	}
 
-	tmplEntry, err := NewTemplatableEntry(entry, &query)
+	gemtextEntry, err := gemtext.NewTemplatableEntry(entry, &query)
 	if err != nil {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
 		log.Printf("error templating entry: %v", err)
 		return
 	}
-	tmplEntry.Render(w)
+	gemtextEntry.Render(w)
 }
 
 func todoHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
