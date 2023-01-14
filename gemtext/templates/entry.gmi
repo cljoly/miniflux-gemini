@@ -14,7 +14,7 @@
 {{- /* Matches the « key and 2 on the bepo layout */ -}}
 => /entry?{{ . }} « Prev
 {{- else -}}
-=> / No Prev, go back home
+=> /entry?{{ .Params }} No Prev, stay here
 {{- end }}
 => /entry?{{ .Next }} » Next
 => /category/{{ .Feed.Category.ID }} 📁 {{ .Feed.Category.Title }}

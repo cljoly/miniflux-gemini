@@ -128,11 +128,13 @@ func (al *ArticleList) First(client *miniflux.Client) (*miniflux.Entry, error) {
 		return nil, err
 	}
 	al.Filter.Limit = prevLimit
+	entries := entrySet.Entries
 
 	entry := new(miniflux.Entry)
-	if entrySet.Total > 0 {
-		entry = entrySet.Entries[0]
-
+	if len(entries) > 0 {
+		entry = entries[0]
+	} else {
+		return nil, nil
 	}
 	return entry, err
 }

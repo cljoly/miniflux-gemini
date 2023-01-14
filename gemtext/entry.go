@@ -71,18 +71,21 @@ func (entry *TemplatableEntry) Next() string {
 }
 
 // Prev returns the parameters to get the previous entry in the reading list
-func (entry *TemplatableEntry) Prev() *string {
+func (entry *TemplatableEntry) Prev() string {
 	offset := currentOffset(entry.query)
 	if offset == 0 {
-		return nil
+		return ""
 	}
 
 	query := copyQuery(entry.query)
 	query.Del("offset") // There may already be an offset stored, we want to replace it
 	query.Set("offset", fmt.Sprint(offset-1))
 
-	s := query.Encode()
-	return &s
+	return query.Encode()
+}
+
+func (entry *TemplatableEntry) Params() string {
+	return entry.query.Encode()
 }
 
 func htmlToGemini(html string) (gemini string, err error) {
