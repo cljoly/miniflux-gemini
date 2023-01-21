@@ -1,2 +1,3 @@
 # miniflux-gemini
-Expose your Miniflux instance to Gemini
+
+Expose your Miniflux instance over the Gemini protocol.
