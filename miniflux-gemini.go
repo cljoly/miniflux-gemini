@@ -29,7 +29,7 @@ import (
 	"cj.rs/miniflux-gemini/gemtext"
 	"git.sr.ht/~adnano/go-gemini"
 	"git.sr.ht/~adnano/go-gemini/certificate"
-	"miniflux.app/client"
+	minifluxClient "miniflux.app/client"
 )
 
 func Run() error {
@@ -47,7 +47,7 @@ func Run() error {
 	mux := &gemini.Mux{}
 	mux.HandleFunc("/", homeHandler)
 	mux.HandleFunc("/entry", entryHandler)
-	mux.HandleFunc("/mark_as_read", markAsReadHandler)
+	mux.HandleFunc("/mark_as", markAsHandler)
 
 	userMiddleware, err := NewUserMiddleware(db, mux)
 	if err != nil {
@@ -69,20 +69,32 @@ func Run() error {
 	return nil
 }
 
-func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *client.Client {
+func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *minifluxClient.Client {
 	user, ok := UserFromContext(ctx)
 	if !ok {
 		w.WriteHeader(gemini.StatusPermanentFailure, "Unexpected error")
 		log.Printf("couldn’t get user")
 		return nil
 	}
-	miniflux := client.New(user.instance, user.token)
+	miniflux := minifluxClient.New(user.instance, user.token)
 	return miniflux
 }
 
-func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+// markAsHandler changes the status of the entry as given
+func markAsHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	query := r.URL.Query()
-	idString := query.Get("id")
+
+	status := query.Get("_status")
+	switch status {
+	case minifluxClient.EntryStatusRead,
+		minifluxClient.EntryStatusUnread:
+		// valid, continue
+	default:
+		w.WriteHeader(gemini.StatusBadRequest, "missing or invalid status")
+		return
+	}
+
+	idString := query.Get("_id")
 	if idString == "" {
 		w.WriteHeader(gemini.StatusBadRequest, "missing id")
 		return
@@ -93,19 +105,26 @@ func markAsReadHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.R
 		return
 	}
 
+	// Remove params for this action, we will pass back the other params
+	query.Del("_status")
+	query.Del("_id")
+
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
 		return
 	}
 
-	err = miniflux.UpdateEntries([]int64{id}, "read")
+	err = miniflux.UpdateEntries([]int64{id}, status)
 	if err != nil {
 		w.WriteHeader(gemini.StatusCGIError, "miniflux error")
-		log.Printf("miniflux error: %v", err)
+		log.Printf("%v", err)
 		return
 	}
-	// Redirect to next entry
-	w.WriteHeader(gemini.StatusRedirect, fmt.Sprintf("/entry?nextOf=%d", id))
+
+	// Save the params and attempt to keep mostly the same position in the
+	// article list (this may get back to the same article if the reading
+	// list has read articles)
+	w.WriteHeader(gemini.StatusRedirect, fmt.Sprintf("/entry?%s", query.Encode()))
 }
 
 func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
@@ -125,7 +144,11 @@ func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request
 	}
 
 	gemtextHome, err := gemtext.NewHome(&categories, &query)
-	gemtextHome.Render(w)
+	err = gemtextHome.Render(w)
+	if err != nil {
+		log.Printf("error rendering home template: %v", err)
+		return
+	}
 }
 
 func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
@@ -157,7 +180,11 @@ func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reques
 		log.Printf("error templating entry: %v", err)
 		return
 	}
-	gemtextEntry.Render(w)
+	err = gemtextEntry.Render(w)
+	if err != nil {
+		log.Printf("error rendering entry: %v", err)
+		return
+	}
 }
 
 func todoHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {

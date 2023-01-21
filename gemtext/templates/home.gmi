@@ -2,7 +2,7 @@
 # Miniflux -> Gemini
 
 => /entry All Unread
-=> /entry?starred=true Starred
+=> /entry?starred=true&statuses=unread&statuses=read Starred
 {{- with .Params }}
 
 => /entry?{{ . }} Entries with the current filter

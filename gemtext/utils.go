@@ -20,9 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package gemtext
 
 import (
-	"text/template"
+	"fmt"
 	"net/url"
 	"strconv"
+	"text/template"
 )
 
 func geminiTemplate(name, text string) *template.Template {
@@ -49,6 +50,27 @@ func copyQuery(old *url.Values) url.Values {
 	}
 
 	return url.Values(nextMap)
+}
+
+// Backs the .Params methods. Can erase some arguments with new values
+func params(values *url.Values, key_values ...string) (string, error) {
+	query := copyQuery(values)
+
+	if len(key_values) % 2 != 0 {
+		return "", fmt.Errorf("Uneven number of arguments")
+	}
+	var key, value string
+	for i, arg_value := range key_values {
+		if i % 2 == 0 {
+			key = arg_value
+			continue
+		} else {
+			value = arg_value
+			query.Set(key, value)
+		}
+	}
+
+	return query.Encode(), nil
 }
 
 // Utility function to get the current offset

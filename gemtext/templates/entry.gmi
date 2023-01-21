@@ -5,9 +5,9 @@
 {{- with .Author }} · {{ . }} {{- end }}
 
 {{ if eq .Status "unread" -}}
-=> /mark_as_read?id={{ .ID }} ✓ Mark read
+=> /mark_as?{{ .Params "_id" (.ID | printf "%v") "_status" "read" }} ✓ Mark read
 {{ else -}}
-=> ./todo ⨯ Mark unread
+=> /mark_as?{{ .Params "_id" (.ID | printf "%v") "_status" "unread" }} ⨯ Mark unread
 {{ end -}}
 
 {{- with .Prev }}
@@ -17,8 +17,8 @@
 => /entry?{{ .Params }} No Prev, stay here
 {{- end }}
 => /entry?{{ .Next }} » Next
-=> /category/{{ .Feed.Category.ID }} 📁 {{ .Feed.Category.Title }}
-=> /feed/{{ .Feed.ID }} 🔖 {{ .Feed.Title }}
+=> /entry?{{ .Params "entryID" (.Feed.Category.ID | printf "%v") }} 📁 {{ .Feed.Category.Title }}
+=> /entry?{{ .Params "feedID" (.Feed.ID | printf "%v") }} 🔖 {{ .Feed.Title }}
 => {{ .URL }} Original page
 {{- with .CommentsURL }}
 => {{ . }} Comments

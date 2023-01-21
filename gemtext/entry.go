@@ -78,14 +78,14 @@ func (entry *TemplatableEntry) Prev() string {
 	}
 
 	query := copyQuery(entry.query)
-	query.Del("offset") // There may already be an offset stored, we want to replace it
 	query.Set("offset", fmt.Sprint(offset-1))
 
 	return query.Encode()
 }
 
-func (entry *TemplatableEntry) Params() string {
-	return entry.query.Encode()
+func (entry *TemplatableEntry) Params(key_values ...string) (string, error) {
+
+	return params(entry.query, key_values...)
 }
 
 func htmlToGemini(html string) (gemini string, err error) {

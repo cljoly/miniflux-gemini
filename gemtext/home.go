@@ -50,8 +50,8 @@ func NewHome(categories *miniflux.Categories, query *url.Values) (*Home, error) 
 	}, nil
 }
 
-func (home *Home) Params() string {
-	return home.query.Encode()
+func (home *Home) Params(key_values ...string) (string, error) {
+	return params(home.query, key_values...)
 }
 
 func (home *Home) Render(w io.Writer) error {

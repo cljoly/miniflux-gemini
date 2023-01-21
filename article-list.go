@@ -73,7 +73,10 @@ func (al *ArticleList) Extend(values map[string][]string) {
 		al.Direction = k[0]
 	}
 	if k, exists := values["starred"]; exists {
-		al.Starred = k[0]
+		switch k[0] {
+		case "true", "false":
+			al.Starred = k[0]
+		}
 	}
 	if k, exists := values["before"]; exists {
 		before, err := strconv.ParseInt(k[0], 10, 64)
