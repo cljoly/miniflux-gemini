@@ -7,7 +7,7 @@ all: miniflux-gemini
 .PHONY: all
 
 srv: miniflux-gemini
-	./miniflux-gemini
+	./miniflux-gemini -host devd.io
 
 test:
 	GOPRIVATE=git.sr.ht go test

@@ -56,7 +56,7 @@ func NewUserMiddleware(db *SqliteDB, h gemini.Handler) (*UserMiddleware, error) 
 func (um *UserMiddleware) ServeGemini(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	tls := r.TLS()
 	if len(tls.PeerCertificates) == 0 {
-		w.WriteHeader(gemini.StatusCertificateRequired, "Certificate required, ask your admin to add yours")
+		w.WriteHeader(gemini.StatusCertificateRequired, "Certificate required, but none provided")
 		return
 	}
 	fingerprint := fingerprint(tls.PeerCertificates[0])

@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"strconv"
@@ -32,6 +33,8 @@ import (
 	minifluxClient "miniflux.app/client"
 )
 
+var hostFlag = flag.String("host", "devd.io", "hostname to generate a TLS certificate for")
+
 func Run() error {
 	db, err := NewDB("miniflux-gemini.db")
 	if err != nil {
@@ -39,7 +42,7 @@ func Run() error {
 	}
 
 	certificates := &certificate.Store{}
-	certificates.Register("gm.cj.rs")
+	certificates.Register(*hostFlag)
 	if err := certificates.Load("./certs"); err != nil {
 		return err
 	}
@@ -55,7 +58,7 @@ func Run() error {
 	}
 
 	server := &gemini.Server{
-		Addr:           "gm.cj.rs:1965",
+		Addr:           "0.0.0.0:1965",
 		Handler:        userMiddleware,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -117,7 +120,7 @@ func markAsHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reque
 	err = miniflux.UpdateEntries([]int64{id}, status)
 	if err != nil {
 		w.WriteHeader(gemini.StatusCGIError, "miniflux error")
-		log.Printf("%v", err)
+		log.Printf("error updating entry %v: %v", id, err)
 		return
 	}
 
@@ -192,6 +195,8 @@ func todoHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request
 }
 
 func main() {
+	flag.Parse()
+
 	err := Run()
 	if err != nil {
 		log.Fatalf("Run: %v", err)
