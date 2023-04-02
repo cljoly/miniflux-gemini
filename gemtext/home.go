@@ -35,19 +35,49 @@ var (
 )
 
 type Home struct {
-	Categories *miniflux.Categories
+	Categories []*RichCategory
 	query      *url.Values
 }
 
-func NewHome(categories *miniflux.Categories, query *url.Values) (*Home, error) {
+// Categories enriched with their Feeds
+type RichCategory struct {
+	*miniflux.Category
+	Feeds []*miniflux.Feed
+}
+
+func NewHome(categories *miniflux.Categories, feeds *miniflux.Feeds, query *url.Values) (*Home, error) {
 	if categories == nil || query == nil {
-		return nil, fmt.Errorf("error trying to render with nil categories")
+		return nil, fmt.Errorf("error trying to render with nil arguments")
+	}
+	nbrCategories := len(*categories)
+
+	feedsByCategory := feedsByCategoryID(feeds, nbrCategories)
+
+	richCategories := make([]*RichCategory, nbrCategories)
+	for i, category := range *categories {
+		richCategories[i] = &RichCategory{
+			Category: category,
+			Feeds:    feedsByCategory[category.ID],
+		}
 	}
 
 	return &Home{
-		Categories: categories,
+		Categories: richCategories,
 		query:      query,
 	}, nil
+}
+
+func feedsByCategoryID(feeds *miniflux.Feeds, categoryHint int) map[int64][]*miniflux.Feed {
+	feedsByCategory := make(map[int64][]*miniflux.Feed, categoryHint)
+	for _, feed := range *feeds {
+		if feeds, ok := feedsByCategory[feed.Category.ID]; ok {
+			feedsByCategory[feed.Category.ID] = append(feeds, feed)
+		} else {
+			feedsByCategory[feed.Category.ID] = make([]*miniflux.Feed, 0)
+		}
+	}
+
+	return feedsByCategory
 }
 
 func (home *Home) Params(key_values ...string) (string, error) {

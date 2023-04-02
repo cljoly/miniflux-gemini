@@ -124,7 +124,14 @@ func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request
 		return
 	}
 
-	gemtextHome, err := gemtext.NewHome(&categories, &query)
+	feeds, err := miniflux.Feeds()
+	if err != nil {
+		w.WriteHeader(gemini.StatusTemporaryFailure, "Error querying minflux")
+		log.Printf("error getting miniflux feeds: %v", err)
+		return
+	}
+
+	gemtextHome, err := gemtext.NewHome(&categories, &feeds, &query)
 	err = gemtextHome.Render(w)
 	if err != nil {
 		log.Printf("error rendering home template: %v", err)

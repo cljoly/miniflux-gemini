@@ -18,6 +18,21 @@
 None
 {{ end }}
 
+## Feeds
+{{ range .Categories }}
+
+### {{ .Title }}
+
+{{ range .Feeds -}}
+=> /entry?feedID={{ .ID }} {{ .Title }}
+{{ else }}
+No feeds
+{{ end -}}
+
+{{ else }}
+None
+{{ end }}
+
 ## Help
 
 TODO
