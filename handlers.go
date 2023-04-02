@@ -38,6 +38,11 @@ func getMiniflux(ctx context.Context, w gemini.ResponseWriter) *minifluxClient.C
 		return nil
 	}
 	miniflux := minifluxClient.New(user.instance, user.token)
+	if miniflux == nil {
+		w.WriteHeader(gemini.StatusTemporaryFailure, "Unexpected error")
+		log.Println("couldn't create miniflux client")
+		return nil
+	}
 	return miniflux
 }
 
@@ -91,8 +96,6 @@ func markAsHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reque
 func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
-		w.WriteHeader(gemini.StatusTemporaryFailure, "miniflux error")
-		log.Println("couldn't create miniflux client")
 		return
 	}
 	query := r.URL.Query()
@@ -116,8 +119,6 @@ func entryHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reques
 	articleList := NewArticleList()
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
-		w.WriteHeader(gemini.StatusTemporaryFailure, "miniflux error")
-		log.Println("couldn't create miniflux client")
 		return
 	}
 
