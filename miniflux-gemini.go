@@ -33,7 +33,8 @@ import (
 	minifluxClient "miniflux.app/client"
 )
 
-var hostFlag = flag.String("host", "devd.io", "hostname to generate a TLS certificate for")
+const defaultHost = "devd.io"
+var hostFlag = flag.String("host", defaultHost, "hostname to generate a TLS certificate for")
 
 func Run() error {
 	db, err := NewDB("miniflux-gemini.db")
@@ -46,6 +47,7 @@ func Run() error {
 	if err := certificates.Load("./certs"); err != nil {
 		return err
 	}
+	log.Println("Got TLS certificate for:", *hostFlag)
 
 	mux := &gemini.Mux{}
 	mux.HandleFunc("/", homeHandler)
@@ -65,6 +67,7 @@ func Run() error {
 		GetCertificate: certificates.Get,
 	}
 
+	log.Println("Listening on:", server.Addr)
 	if err := server.ListenAndServe(context.Background()); err != nil {
 		return err
 	}
