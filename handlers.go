@@ -93,6 +93,23 @@ func markAsHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Reque
 	w.WriteHeader(gemini.StatusRedirect, fmt.Sprintf("/entry?%s", query.Encode()))
 }
 
+func refreshAllHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+	miniflux := getMiniflux(ctx, w)
+	if miniflux == nil {
+		return
+	}
+
+	err := miniflux.RefreshAllFeeds()
+	if err != nil {
+		w.WriteHeader(gemini.StatusCGIError, "miniflux error")
+		log.Printf("error refreshing all feeds: %v", err)
+		return
+	}
+
+	// Go back to the home page after a full refresh
+	w.WriteHeader(gemini.StatusRedirect, "/")
+}
+
 func homeHandler(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	miniflux := getMiniflux(ctx, w)
 	if miniflux == nil {
