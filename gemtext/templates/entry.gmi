@@ -17,8 +17,8 @@
 => /entry?{{ .Params }} No Prev, stay here
 {{- end }}
 => /entry?{{ .Next }} » Next
-=> /entry?{{ .Params "entryID" (.Feed.Category.ID | printf "%v") }} 📁 {{ .Feed.Category.Title }}
-=> /entry?{{ .Params "feedID" (.Feed.ID | printf "%v") }} 🔖 {{ .Feed.Title }}
+=> /entry?categoryID={{ (.Feed.Category.ID | printf "%v") }} 📁 {{ .Feed.Category.Title }}
+=> /entry?feedID={{ (.Feed.ID | printf "%v") }} 🔖 {{ .Feed.Title }}
 => {{ .URL }} Original page
 {{- with .CommentsURL }}
 => {{ . }} Comments
