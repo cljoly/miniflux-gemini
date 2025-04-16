@@ -1,7 +1,7 @@
 module cj.rs/miniflux-gemini
 
 go 1.22.0
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
 	git.sr.ht/~adnano/go-gemini v0.2.6
@@ -22,9 +22,9 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20241223112719-96e2e1e4408d // indirect
 	modernc.org/libc v1.61.5 // indirect
 	modernc.org/mathutil v1.7.0 // indirect
